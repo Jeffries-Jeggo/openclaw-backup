@@ -6,7 +6,7 @@ import io
 from datetime import datetime, timedelta
 
 app = Flask(__name__)
-app.secret_key = 'linguaflip_secret_key'
+app.secret_key = 'flashflow_secret_key'
 DB_NAME = 'flashcards.db'
 
 def init_db():
