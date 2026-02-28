@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="header-actions">
+    <a href="{{ url_for('index') }}" class="btn secondary">← Back to Decks</a>
+    <a href="{{ url_for('export_deck', deck_id=deck['id']) }}" class="btn success">Export CSV</a>
+    <a href="{{ url_for('study', deck_id=deck['id']) }}" class="btn primary">Study Now {% if due_count > 0 %}({{ due_count }} due){% endif %}</a>
+</div>
+
+<h2>{{ deck['name'] }}{% if due_count > 0 %} <span class="due-count">{{ due_count }} due</span>{% endif %}</h2>
+
+<section class="import-section">
+    <h3>Import Cards (CSV)</h3>
+    <form action="{{ url_for('import_cards', deck_id=deck['id']) }}" method="POST" enctype="multipart/form-data">
+        <input type="file" name="file" accept=".csv" required>
+        <button type="submit" class="btn primary">Import</button>
+    </form>
+    <p class="hint">CSV format: front, back (header row optional)</p>
+</section>
+
+<section class="add-card">
+    <h3>Add New Card</h3>
+    <form action="{{ url_for('add_card') }}" method="POST">
+        <input type="hidden" name="deck_id" value="{{ deck['id'] }}">
+        <input type="text" name="front" placeholder="Front (Word)" required>
+        <input type="text" name="back" placeholder="Back (Translation)" required>
+        <button type="submit" class="btn primary">Add Card</button>
+    </form>
+</section>
+
+<section class="card-list">
+    <h3>Cards in Deck ({{ cards|length }})</h3>
+    {% if cards %}
+        <ul class="cards">
+            {% for card in cards %}
+                <li>
+                    <span class="front">{{ card['front'] }}</span>
+                    <span class="separator">→</span>
+                    <span class="back">{{ card['back'] }}</span>
+                    <span class="status-badge {{ card['status'] }}">{{ card['status'] }}</span>
+                    {% if card['interval'] > 0 %}
+                    <span class="interval-badge" title="Days until next review">{{ card['interval'] }}d</span>
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p class="empty-state">No cards in this deck yet.</p>
+    {% endif %}
+</section>
+{% endblock %}
