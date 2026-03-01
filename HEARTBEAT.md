@@ -9,3 +9,9 @@
 - First, review relevant files (MEMORY.md, USER.md, AGENTS.md, etc.) to understand current workflows and identify areas for improvement.
 - Choose one concrete improvement to implement.
 - Present the completed task to the user as a surprise.
+
+# Auto-Backup Task (Every Heartbeat)
+- cd /home/ubuntu/.openclaw/workspace
+- git add .
+- If changes (git status --porcelain), commit with msg "Auto-backup [date]" and git push origin main
+- Log success/failure to memory/YYYY-MM-DD.md
