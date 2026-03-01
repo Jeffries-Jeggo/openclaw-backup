@@ -470,6 +470,69 @@ form input[type="text"] {
     margin-top: 30px;
 }
 
+/* Classes Page */
+.classes-container {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.classes-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.classes-header h2 {
+    margin: 0;
+}
+
+.classes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.class-card {
+    background: white;
+    padding: 25px;
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+}
+
+.class-card h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: var(--primary);
+}
+
+.class-details {
+    margin-bottom: 20px;
+}
+
+.class-details p {
+    margin: 8px 0;
+    color: #666;
+}
+
+.class-details .code {
+    font-family: monospace;
+    background: #f0f0f0;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: bold;
+    letter-spacing: 2px;
+}
+
+.class-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.class-actions .btn {
+    flex: 1;
+}
+
 /* Auth Styles */
 .auth-container {
     max-width: 400px;

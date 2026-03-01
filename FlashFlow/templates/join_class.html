@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}Join Class{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <h2>Join a Class</h2>
+    
+    <form method="POST" action="{{ url_for('join_class') }}" class="auth-form">
+        <div class="form-group">
+            <label for="class_code">Class Code</label>
+            <input type="text" 
+                   id="class_code" 
+                   name="class_code" 
+                   required 
+                   placeholder="Enter 6-character code (e.g., ABC123)"
+                   maxlength="6"
+                   style="text-transform: uppercase;">
+        </div>
+        
+        <button type="submit" class="btn primary">Join Class</button>
+    </form>
+    
+    <p class="hint">Ask your teacher for the class code.</p>
+</div>
+{% endblock %}

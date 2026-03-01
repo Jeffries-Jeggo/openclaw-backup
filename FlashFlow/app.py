@@ -543,5 +543,163 @@ def import_cards(deck_id):
     
     return redirect(url_for('view_deck', deck_id=deck_id))
 
+# ==================== CLASS MANAGEMENT ====================
+
+def generate_class_code(length=6):
+    """Generate a random class code (uppercase letters + numbers)."""
+    import random
+    import string
+    characters = string.ascii_uppercase + string.digits
+    return ''.join(random.choice(characters) for _ in range(length))
+
+@app.route('/classes')
+@login_required
+def list_classes():
+    """List classes for teacher or student."""
+    conn = get_db_connection()
+    
+    if current_user.is_teacher():
+        # Get teacher's classes
+        classes = conn.execute('''
+            SELECT c.*, COUNT(e.student_id) as student_count
+            FROM classes c
+            LEFT JOIN enrollments e ON c.id = e.class_id
+            WHERE c.teacher_id = ?
+            GROUP BY c.id
+            ORDER BY c.created_at DESC
+        ''', (current_user.id,)).fetchall()
+        
+        conn.close()
+        
+        if not classes:
+            flash('No classes yet. Create your first class!', 'info')
+            return redirect(url_for('create_class'))
+        
+        return render_template('teacher_classes.html', classes=classes)
+    else:
+        # Get student's enrolled classes
+        classes = conn.execute('''
+            SELECT c.*, u.username as teacher_name
+            FROM classes c
+            JOIN enrollments e ON c.id = e.class_id
+            JOIN users u ON c.teacher_id = u.id
+            WHERE e.student_id = ?
+            ORDER BY c.created_at DESC
+        ''', (current_user.id,)).fetchall()
+        
+        conn.close()
+        return render_template('student_classes.html', classes=classes)
+
+@app.route('/classes/new', methods=['GET', 'POST'])
+@login_required
+def create_class():
+    """Create a new class (teachers only)."""
+    if not current_user.is_teacher():
+        flash('Only teachers can create classes.', 'error')
+        return redirect(url_for('index'))
+    
+    if request.method == 'POST':
+        class_name = request.form.get('name', '').strip()
+        
+        if not class_name:
+            flash('Class name is required.', 'error')
+            return render_template('create_class.html')
+        
+        # Generate unique class code
+        conn = get_db_connection()
+        while True:
+            class_code = generate_class_code()
+            existing = conn.execute('SELECT id FROM classes WHERE class_code = ?', (class_code,)).fetchone()
+            if not existing:
+                break
+        
+        try:
+            conn.execute(
+                'INSERT INTO classes (name, class_code, teacher_id) VALUES (?, ?, ?)',
+                (class_name, class_code, current_user.id)
+            )
+            conn.commit()
+            flash(f'Class "{class_name}" created! Class code: {class_code}', 'success')
+        except Exception as e:
+            flash(f'Error creating class: {str(e)}', 'error')
+        finally:
+            conn.close()
+        
+        return redirect(url_for('list_classes'))
+    
+    return render_template('create_class.html')
+
+@app.route('/classes/join', methods=['GET', 'POST'])
+@login_required
+def join_class():
+    """Join a class (students only)."""
+    if current_user.is_teacher():
+        flash('Teachers cannot join classes. Students join your classes instead.', 'error')
+        return redirect(url_for('index'))
+    
+    if request.method == 'POST':
+        class_code = request.form.get('class_code', '').strip().upper()
+        
+        if not class_code:
+            flash('Class code is required.', 'error')
+            return render_template('join_class.html')
+        
+        conn = get_db_connection()
+        
+        # Find class by code
+        class_info = conn.execute('SELECT * FROM classes WHERE class_code = ?', (class_code,)).fetchone()
+        
+        if not class_info:
+            conn.close()
+            flash('Invalid class code.', 'error')
+            return render_template('join_class.html')
+        
+        # Check if already enrolled
+        existing = conn.execute(
+            'SELECT id FROM enrollments WHERE class_id = ? AND student_id = ?',
+            (class_info['id'], current_user.id)
+        ).fetchone()
+        
+        if existing:
+            conn.close()
+            flash('You are already enrolled in this class.', 'info')
+            return redirect(url_for('list_classes'))
+        
+        # Enroll student
+        try:
+            conn.execute(
+                'INSERT INTO enrollments (class_id, student_id) VALUES (?, ?)',
+                (class_info['id'], current_user.id)
+            )
+            conn.commit()
+            flash(f'Successfully joined "{class_info["name"]}"!', 'success')
+        except Exception as e:
+            flash(f'Error joining class: {str(e)}', 'error')
+        finally:
+            conn.close()
+        
+        return redirect(url_for('list_classes'))
+    
+    return render_template('join_class.html')
+
+# Placeholder routes for features to be implemented
+@app.route('/classes/<int:class_id>/dashboard')
+@login_required
+def class_dashboard(class_id):
+    """Teacher dashboard for a class."""
+    return render_template('class_dashboard.html', class_id=class_id)
+
+@app.route('/classes/<int:class_id>/assign')
+@login_required
+def assign_cards(class_id):
+    """Assign cards to a class."""
+    return render_template('assign_cards.html', class_id=class_id)
+
+@app.route('/classes/<int:class_id>/study')
+@login_required
+def study_class(class_id):
+    """Student study view for class cards."""
+    return render_template('study_class.html', class_id=class_id)
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
