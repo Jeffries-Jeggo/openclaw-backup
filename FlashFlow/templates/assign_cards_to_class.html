@@ -29,7 +29,7 @@
                     {% endfor %}
                 </div>
             </div>
-        {% empty %}
+        {% else %}
             <div class="empty-state">
                 <p>No cards found. Create cards in your decks first.</p>
                 <a href="{{ url_for('index') }}" class="btn primary">Go to Decks</a>

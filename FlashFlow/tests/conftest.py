@@ -111,20 +111,52 @@ class TestData:
         return cursor.lastrowid
     
     @staticmethod
-    def create_card(db, deck_id, front, back, unit_id=None):
+    def create_card(db, deck_id, front, back, unit_id=None, created_by=1):
         """Create a card."""
         if unit_id:
             cursor = db.execute(
-                'INSERT INTO cards (deck_id, unit_id, front, back) VALUES (?, ?, ?, ?)',
-                (deck_id, unit_id, front, back)
+                'INSERT INTO cards (deck_id, unit_id, front, back, created_by) VALUES (?, ?, ?, ?, ?)',
+                (deck_id, unit_id, front, back, created_by)
             )
         else:
             cursor = db.execute(
-                'INSERT INTO cards (deck_id, front, back) VALUES (?, ?, ?)',
-                (deck_id, front, back)
+                'INSERT INTO cards (deck_id, front, back, created_by) VALUES (?, ?, ?, ?)',
+                (deck_id, front, back, created_by)
             )
         db.commit()
         return cursor.lastrowid
+    
+    @staticmethod
+    def create_class(db, name, teacher_id, class_code=None):
+        """Create a class."""
+        import random
+        import string
+        if class_code is None:
+            class_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+        cursor = db.execute(
+            'INSERT INTO classes (name, class_code, teacher_id) VALUES (?, ?, ?)',
+            (name, class_code, teacher_id)
+        )
+        db.commit()
+        return cursor.lastrowid
+    
+    @staticmethod
+    def enroll_student(db, class_id, student_id):
+        """Enroll a student in a class."""
+        db.execute(
+            'INSERT INTO enrollments (class_id, student_id) VALUES (?, ?)',
+            (class_id, student_id)
+        )
+        db.commit()
+    
+    @staticmethod
+    def assign_card_to_class(db, class_id, card_id, assigned_by):
+        """Assign a card to a class."""
+        db.execute(
+            'INSERT INTO class_cards (class_id, card_id, assigned_by) VALUES (?, ?, ?)',
+            (class_id, card_id, assigned_by)
+        )
+        db.commit()
 
 
 @pytest.fixture
