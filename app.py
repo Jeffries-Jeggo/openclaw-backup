@@ -255,6 +255,12 @@ def create_deck():
 def view_deck(deck_id):
     conn = get_db_connection()
     deck = conn.execute('SELECT * FROM decks WHERE id = ?', (deck_id,)).fetchone()
+    
+    if not deck:
+        conn.close()
+        flash('Deck not found.', 'error')
+        return redirect(url_for('index'))
+    
     cards = conn.execute('''
         SELECT cards.*, units.name as unit_name 
         FROM cards 
