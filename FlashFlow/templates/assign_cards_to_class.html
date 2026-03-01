@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}Assign Cards - {{ class_info.name }}{% endblock %}
+
+{% block content %}
+<div class="classes-container">
+    <h2>Assign Cards to "{{ class_info.name }}"</h2>
+    <p class="hint">Select cards from your decks to assign to this class. Already assigned cards are marked.</p>
+    
+    <form method="POST" action="{{ url_for('assign_cards_to_class', class_id=class_info.id) }}" class="assign-form">
+        {% for deck, cards in deck_cards.items() %}
+            <div class="deck-assignment-section">
+                <h3>{{ deck.name }}</h3>
+                <div class="cards-select-grid">
+                    {% for card in cards %}
+                        <label class="card-select-item {% if card.is_assigned > 0 %}assigned{% endif %}">
+                            <input type="checkbox" name="card_ids" value="{{ card.id }}" {% if card.is_assigned > 0 %}disabled{% endif %}>
+                            <div class="card-preview">
+                                <strong>{{ card.front[:50] }}{% if card.front|length > 50 %}...{% endif %}</strong>
+                                <p>{{ card.back[:50] }}{% if card.back|length > 50 %}...{% endif %}</p>
+                                {% if card.unit_name %}
+                                    <span class="unit-badge">{{ card.unit_name }}</span>
+                                {% endif %}
+                                {% if card.is_assigned > 0 %}
+                                    <span class="assigned-badge">Already Assigned</span>
+                                {% endif %}
+                            </div>
+                        </label>
+                    {% endfor %}
+                </div>
+            </div>
+        {% empty %}
+            <div class="empty-state">
+                <p>No cards found. Create cards in your decks first.</p>
+                <a href="{{ url_for('index') }}" class="btn primary">Go to Decks</a>
+            </div>
+        {% endfor %}
+        
+        <div class="form-actions">
+            <a href="{{ url_for('list_classes') }}" class="btn secondary">Cancel</a>
+            {% if deck_cards %}
+                <button type="submit" class="btn primary">Assign Selected Cards</button>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+<style>
+.deck-assignment-section {
+    margin-bottom: 30px;
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+}
+
+.cards-select-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.card-select-item {
+    display: flex;
+    gap: 10px;
+    padding: 15px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.card-select-item:hover {
+    border-color: var(--primary);
+}
+
+.card-select-item.assigned {
+    background: #f5f5f5;
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.card-select-item input[type="checkbox"] {
+    margin-top: 5px;
+}
+
+.card-preview {
+    flex: 1;
+}
+
+.card-preview strong {
+    display: block;
+    margin-bottom: 5px;
+    color: var(--text-color);
+}
+
+.card-preview p {
+    margin: 5px 0;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.assigned-badge {
+    display: inline-block;
+    background: var(--success);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    margin-left: 5px;
+}
+
+.assign-form .form-actions {
+    margin-top: 30px;
+    padding: 20px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+}
+</style>
+{% endblock %}

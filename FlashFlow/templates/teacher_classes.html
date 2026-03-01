@@ -21,7 +21,7 @@
                     </div>
                     <div class="class-actions">
                         <a href="{{ url_for('class_dashboard', class_id=class.id) }}" class="btn primary">Dashboard</a>
-                        <a href="{{ url_for('assign_cards', class_id=class.id) }}" class="btn secondary">Assign Cards</a>
+                        <a href="{{ url_for('assign_cards_to_class', class_id=class.id) }}" class="btn secondary">Assign Cards</a>
                     </div>
                 </div>
             {% endfor %}

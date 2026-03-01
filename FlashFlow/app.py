@@ -865,6 +865,92 @@ def join_class():
     
     return render_template('join_class.html')
 
+@app.route('/classes/<int:class_id>/assign', methods=['GET', 'POST'])
+@login_required
+def assign_cards_to_class(class_id):
+    """Assign cards to a class from the class view."""
+    if not current_user.is_teacher():
+        flash('Only teachers can assign cards.', 'error')
+        return redirect(url_for('index'))
+
+    conn = get_db_connection()
+
+    # Verify teacher owns this class
+    class_info = conn.execute(
+        'SELECT * FROM classes WHERE id = ? AND teacher_id = ?',
+        (class_id, current_user.id)
+    ).fetchone()
+
+    if not class_info:
+        conn.close()
+        flash('Class not found or access denied.', 'error')
+        return redirect(url_for('list_classes'))
+
+    if request.method == 'POST':
+        card_ids = request.form.getlist('card_ids')
+        
+        if not card_ids:
+            flash('No cards selected.', 'error')
+            conn.close()
+            return redirect(url_for('assign_cards_to_class', class_id=class_id))
+
+        # Assign cards to class
+        assigned_count = 0
+        for card_id in card_ids:
+            try:
+                conn.execute(
+                    'INSERT INTO class_cards (class_id, card_id, assigned_by) VALUES (?, ?, ?)',
+                    (class_id, card_id, current_user.id)
+                )
+                assigned_count += 1
+
+                # Initialize user_progress for all students in the class
+                students = conn.execute(
+                    'SELECT student_id FROM enrollments WHERE class_id = ?',
+                    (class_id,)
+                ).fetchall()
+                for student in students:
+                    conn.execute('''
+                        INSERT OR IGNORE INTO user_progress 
+                        (user_id, card_id, class_id, status, due_date)
+                        VALUES (?, ?, ?, 'new', CURRENT_TIMESTAMP)
+                    ''', (student['student_id'], card_id, class_id))
+            except sqlite3.IntegrityError:
+                pass  # Already assigned
+
+        conn.commit()
+        conn.close()
+
+        flash(f'{assigned_count} card(s) assigned to class!', 'success')
+        return redirect(url_for('list_classes'))
+
+    # GET request - show available cards
+    # Get all decks and cards created by this teacher
+    decks = conn.execute('''
+        SELECT d.* FROM decks d
+        WHERE d.created_by = ?
+        ORDER BY d.name ASC
+    ''', (current_user.id,)).fetchall()
+
+    deck_cards = {}
+    for deck in decks:
+        cards = conn.execute('''
+            SELECT c.id, c.front, c.back, u.name as unit_name,
+                   (SELECT COUNT(*) FROM class_cards cc WHERE cc.card_id = c.id AND cc.class_id = ?) as is_assigned
+            FROM cards c
+            LEFT JOIN units u ON c.unit_id = u.id
+            WHERE c.deck_id = ? AND c.created_by = ?
+            ORDER BY c.id DESC
+        ''', (class_id, deck['id'], current_user.id)).fetchall()
+        if cards:
+            deck_cards[deck] = cards
+
+    conn.close()
+    
+    return render_template('assign_cards_to_class.html', 
+                           class_info=class_info, 
+                           deck_cards=deck_cards)
+
 @app.route('/classes/<int:class_id>/dashboard')
 @login_required
 def class_dashboard(class_id):
