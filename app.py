@@ -95,18 +95,33 @@ def get_db_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
-def get_due_cards(deck_id):
-    """Get cards that are due for review based on spaced repetition."""
+def get_due_cards(deck_id, user_id=None):
+    """Get cards that are due for review based on spaced repetition.
+    New cards (status='new') are prioritized and shown first."""
     conn = get_db_connection()
     today = datetime.now().strftime('%Y-%m-%d')
-    cards = conn.execute('''
+    
+    # First, get new cards (prioritize these)
+    new_cards = conn.execute('''
         SELECT * FROM cards 
         WHERE deck_id = ? 
+        AND status = 'new'
+        ORDER BY id ASC
+    ''', (deck_id,)).fetchall()
+    
+    # Then get due review cards (status='learning' or 'review' with due_date <= today)
+    due_cards = conn.execute('''
+        SELECT * FROM cards 
+        WHERE deck_id = ? 
+        AND status = 'learning'
         AND (due_date <= ? OR due_date IS NULL OR due_date = '')
-        AND status != 'known'
+        ORDER BY due_date ASC
     ''', (deck_id, today)).fetchall()
+    
     conn.close()
-    return cards
+    
+    # Return new cards first, then due cards
+    return list(new_cards) + list(due_cards)
 
 # ==================== AUTH ROUTES ====================
 
@@ -213,12 +228,16 @@ def view_deck(deck_id):
     deck = conn.execute('SELECT * FROM decks WHERE id = ?', (deck_id,)).fetchone()
     cards = conn.execute('SELECT * FROM cards WHERE deck_id = ?', (deck_id,)).fetchall()
     
+    # Count due cards (including new cards and learning cards that are due)
     today = datetime.now().strftime('%Y-%m-%d')
     due_count = conn.execute('''
         SELECT COUNT(*) FROM cards 
         WHERE deck_id = ? 
-        AND (due_date <= ? OR due_date IS NULL OR due_date = '')
         AND status != 'known'
+        AND (
+            status = 'new'
+            OR (status = 'learning' AND (due_date <= ? OR due_date IS NULL OR due_date = ''))
+        )
     ''', (deck_id, today)).fetchone()[0]
     
     conn.close()
