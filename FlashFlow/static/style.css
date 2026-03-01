@@ -667,3 +667,56 @@ form input[type="text"] {
     background-color: var(--primary);
     color: white;
 }
+
+/* Class Assignment in Add Card */
+.class-assignment {
+    background: #f0f7ff;
+    padding: 20px;
+    border-radius: 8px;
+    border-left: 3px solid var(--primary);
+}
+
+.class-assignment label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.class-checkboxes {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.checkbox-label {
+    display: flex !important;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    padding: 8px 12px;
+    background: white;
+    border-radius: 5px;
+    border: 1px solid #ddd;
+    transition: all 0.2s;
+}
+
+.checkbox-label:hover {
+    border-color: var(--primary);
+    background: #fafafa;
+}
+
+.checkbox-label input[type="checkbox"] {
+    transform: scale(1.2);
+    cursor: pointer;
+}
+
+.checkbox-label span {
+    font-weight: normal !important;
+}
+
+.class-assignment .hint {
+    font-size: 0.85rem;
+    color: #666;
+    margin: 0;
+}

@@ -207,29 +207,63 @@ migrate_db()
 
 def get_due_cards(deck_id, user_id=None):
     """Get cards that are due for review based on spaced repetition.
-    New cards (status='new') are prioritized and shown first."""
+    New cards (status='new') are prioritized and shown first.
+    For students, only return cards assigned to their enrolled classes."""
     conn = get_db_connection()
     today = datetime.now().strftime('%Y-%m-%d')
-    
+
+    if user_id:
+        # Check if user is a student
+        user = conn.execute('SELECT role FROM users WHERE id = ?', (user_id,)).fetchone()
+
+        if user and user['role'] == 'student':
+            # For students: only get cards assigned to their enrolled classes
+            # First, get new cards (prioritize these)
+            new_cards = conn.execute('''
+                SELECT DISTINCT c.* FROM cards c
+                JOIN class_cards cc ON c.id = cc.card_id
+                JOIN enrollments e ON cc.class_id = e.class_id
+                WHERE c.deck_id = ?
+                AND e.student_id = ?
+                AND c.status = 'new'
+                ORDER BY c.id ASC
+            ''', (deck_id, user_id)).fetchall()
+
+            # Then get due review cards
+            due_cards = conn.execute('''
+                SELECT DISTINCT c.* FROM cards c
+                JOIN class_cards cc ON c.id = cc.card_id
+                JOIN enrollments e ON cc.class_id = e.class_id
+                WHERE c.deck_id = ?
+                AND e.student_id = ?
+                AND c.status = 'learning'
+                AND (c.due_date <= ? OR c.due_date IS NULL OR c.due_date = '')
+                ORDER BY c.due_date ASC
+            ''', (deck_id, user_id, today)).fetchall()
+
+            conn.close()
+            return list(new_cards) + list(due_cards)
+
+    # For teachers or no user_id: get all cards in deck
     # First, get new cards (prioritize these)
     new_cards = conn.execute('''
-        SELECT * FROM cards 
-        WHERE deck_id = ? 
+        SELECT * FROM cards
+        WHERE deck_id = ?
         AND status = 'new'
         ORDER BY id ASC
     ''', (deck_id,)).fetchall()
-    
+
     # Then get due review cards (status='learning' or 'review' with due_date <= today)
     due_cards = conn.execute('''
-        SELECT * FROM cards 
-        WHERE deck_id = ? 
+        SELECT * FROM cards
+        WHERE deck_id = ?
         AND status = 'learning'
         AND (due_date <= ? OR due_date IS NULL OR due_date = '')
         ORDER BY due_date ASC
     ''', (deck_id, today)).fetchall()
-    
+
     conn.close()
-    
+
     # Return new cards first, then due cards
     return list(new_cards) + list(due_cards)
 
@@ -336,33 +370,104 @@ def create_deck():
 def view_deck(deck_id):
     conn = get_db_connection()
     deck = conn.execute('SELECT * FROM decks WHERE id = ?', (deck_id,)).fetchone()
-    
+
     if not deck:
         conn.close()
         flash('Deck not found.', 'error')
         return redirect(url_for('index'))
-    
+
     cards = conn.execute('''
-        SELECT cards.*, units.name as unit_name 
-        FROM cards 
-        LEFT JOIN units ON cards.unit_id = units.id 
+        SELECT cards.*, units.name as unit_name
+        FROM cards
+        LEFT JOIN units ON cards.unit_id = units.id
         WHERE cards.deck_id = ?
     ''', (deck_id,)).fetchall()
-    
+
     # Count due cards (including new cards and learning cards that are due)
     today = datetime.now().strftime('%Y-%m-%d')
     due_count = conn.execute('''
-        SELECT COUNT(*) FROM cards 
-        WHERE deck_id = ? 
+        SELECT COUNT(*) FROM cards
+        WHERE deck_id = ?
         AND status != 'known'
         AND (
             status = 'new'
             OR (status = 'learning' AND (due_date <= ? OR due_date IS NULL OR due_date = ''))
         )
     ''', (deck_id, today)).fetchone()[0]
-    
+
+    # Get teacher's classes for bulk assignment
+    teacher_classes = []
+    if current_user.is_teacher():
+        teacher_classes = conn.execute(
+            'SELECT * FROM classes WHERE teacher_id = ? ORDER BY name ASC',
+            (current_user.id,)
+        ).fetchall()
+
     conn.close()
-    return render_template('deck.html', deck=deck, cards=cards, due_count=due_count)
+    return render_template('deck.html', deck=deck, cards=cards, due_count=due_count, teacher_classes=teacher_classes)
+
+
+@app.route('/deck/<int:deck_id>/assign_cards', methods=['POST'])
+@login_required
+def assign_cards_to_class(deck_id):
+    """Assign multiple cards to a class."""
+    if not current_user.is_teacher():
+        flash('Only teachers can assign cards.', 'error')
+        return redirect(url_for('view_deck', deck_id=deck_id))
+
+    card_ids = request.form.getlist('card_ids')
+    class_id = request.form.get('class_id')
+
+    if not card_ids:
+        flash('No cards selected.', 'error')
+        return redirect(url_for('view_deck', deck_id=deck_id))
+
+    if not class_id:
+        flash('Please select a class.', 'error')
+        return redirect(url_for('view_deck', deck_id=deck_id))
+
+    conn = get_db_connection()
+
+    # Verify teacher owns this class
+    class_check = conn.execute(
+        'SELECT id FROM classes WHERE id = ? AND teacher_id = ?',
+        (class_id, current_user.id)
+    ).fetchone()
+
+    if not class_check:
+        conn.close()
+        flash('Invalid class selected.', 'error')
+        return redirect(url_for('view_deck', deck_id=deck_id))
+
+    # Assign cards to class
+    assigned_count = 0
+    for card_id in card_ids:
+        try:
+            conn.execute(
+                'INSERT INTO class_cards (class_id, card_id, assigned_by) VALUES (?, ?, ?)',
+                (class_id, card_id, current_user.id)
+            )
+            assigned_count += 1
+
+            # Initialize user_progress for all students in the class
+            students = conn.execute(
+                'SELECT student_id FROM enrollments WHERE class_id = ?',
+                (class_id,)
+            ).fetchall()
+            for student in students:
+                conn.execute('''
+                    INSERT OR IGNORE INTO user_progress
+                    (user_id, card_id, class_id, status, due_date)
+                    VALUES (?, ?, ?, 'new', CURRENT_TIMESTAMP)
+                ''', (student['student_id'], card_id, class_id))
+        except sqlite3.IntegrityError:
+            pass  # Already assigned
+
+    conn.commit()
+    conn.close()
+
+    flash(f'{assigned_count} card(s) assigned to class!', 'success')
+    return redirect(url_for('view_deck', deck_id=deck_id))
 
 def get_all_units():
     """Get all units for dropdown."""
@@ -370,6 +475,28 @@ def get_all_units():
     units = conn.execute('SELECT * FROM units ORDER BY name ASC').fetchall()
     conn.close()
     return units
+
+def get_teacher_classes(teacher_id):
+    """Get all classes created by a teacher."""
+    conn = get_db_connection()
+    classes = conn.execute(
+        'SELECT * FROM classes WHERE teacher_id = ? ORDER BY name ASC',
+        (teacher_id,)
+    ).fetchall()
+    conn.close()
+    return classes
+
+def get_student_classes(student_id):
+    """Get all classes a student is enrolled in."""
+    conn = get_db_connection()
+    classes = conn.execute('''
+        SELECT c.* FROM classes c
+        JOIN enrollments e ON c.id = e.class_id
+        WHERE e.student_id = ?
+        ORDER BY c.name ASC
+    ''', (student_id,)).fetchall()
+    conn.close()
+    return classes
 
 @app.route('/deck/<int:deck_id>/add_card', methods=['GET', 'POST'])
 @login_required
@@ -382,17 +509,26 @@ def add_card(deck_id):
         flash('Deck not found.', 'error')
         return redirect(url_for('index'))
     
+    # Get teacher's classes for assignment (only for teachers)
+    teacher_classes = []
+    if current_user.is_teacher():
+        teacher_classes = conn.execute(
+            'SELECT * FROM classes WHERE teacher_id = ? ORDER BY name ASC',
+            (current_user.id,)
+        ).fetchall()
+    
     if request.method == 'POST':
         front = request.form.get('front', '').strip()
         back = request.form.get('back', '').strip()
         unit_id = request.form.get('unit_id')
         new_unit_name = request.form.get('new_unit_name', '').strip()
+        class_ids = request.form.getlist('class_ids')  # Get multiple class assignments
         
         if not front or not back:
             flash('Front and back are required.', 'error')
             units = get_all_units()
             conn.close()
-            return render_template('add_card.html', deck=deck, units=units)
+            return render_template('add_card.html', deck=deck, units=units, teacher_classes=teacher_classes)
         
         # Handle new unit creation
         if unit_id == 'new' and new_unit_name:
@@ -410,16 +546,54 @@ def add_card(deck_id):
             flash('Please enter a name for the new unit.', 'error')
             units = get_all_units()
             conn.close()
-            return render_template('add_card.html', deck=deck, units=units)
+            return render_template('add_card.html', deck=deck, units=units, teacher_classes=teacher_classes)
         
-        # Insert the card
+        # Insert the card with created_by
         if unit_id and unit_id != 'new':
-            conn.execute('INSERT INTO cards (deck_id, unit_id, front, back) VALUES (?, ?, ?, ?)', 
-                        (deck_id, unit_id, front, back))
+            cursor = conn.execute(
+                'INSERT INTO cards (deck_id, unit_id, front, back, created_by) VALUES (?, ?, ?, ?, ?)', 
+                (deck_id, unit_id, front, back, current_user.id))
         else:
-            conn.execute('INSERT INTO cards (deck_id, front, back) VALUES (?, ?, ?)', 
-                        (deck_id, front, back))
+            cursor = conn.execute(
+                'INSERT INTO cards (deck_id, front, back, created_by) VALUES (?, ?, ?, ?)', 
+                (deck_id, front, back, current_user.id))
+        card_id = cursor.lastrowid
         conn.commit()
+        
+        # Assign card to selected classes
+        if class_ids and current_user.is_teacher():
+            assigned_count = 0
+            for class_id in class_ids:
+                # Verify teacher owns this class
+                class_check = conn.execute(
+                    'SELECT id FROM classes WHERE id = ? AND teacher_id = ?',
+                    (class_id, current_user.id)
+                ).fetchone()
+                if class_check:
+                    try:
+                        conn.execute(
+                            'INSERT INTO class_cards (class_id, card_id, assigned_by) VALUES (?, ?, ?)',
+                            (class_id, card_id, current_user.id)
+                        )
+                        assigned_count += 1
+                        
+                        # Initialize user_progress for all students in the class
+                        students = conn.execute(
+                            'SELECT student_id FROM enrollments WHERE class_id = ?',
+                            (class_id,)
+                        ).fetchall()
+                        for student in students:
+                            conn.execute('''
+                                INSERT OR IGNORE INTO user_progress 
+                                (user_id, card_id, class_id, status, due_date)
+                                VALUES (?, ?, ?, 'new', CURRENT_TIMESTAMP)
+                            ''', (student['student_id'], card_id, class_id))
+                    except sqlite3.IntegrityError:
+                        pass  # Already assigned
+            conn.commit()
+            if assigned_count > 0:
+                flash(f'Card assigned to {assigned_count} class(es)!', 'success')
+        
         conn.close()
         flash('Card added successfully!', 'success')
         return redirect(url_for('view_deck', deck_id=deck_id))
@@ -427,12 +601,12 @@ def add_card(deck_id):
     # GET request - show form
     units = conn.execute('SELECT * FROM units ORDER BY name ASC').fetchall()
     conn.close()
-    return render_template('add_card.html', deck=deck, units=units)
+    return render_template('add_card.html', deck=deck, units=units, teacher_classes=teacher_classes)
 
 @app.route('/study/<int:deck_id>')
 @login_required
 def study(deck_id):
-    cards = get_due_cards(deck_id)
+    cards = get_due_cards(deck_id, current_user.id)
 
     if not cards:
         flash('No cards due for review! Great job! 🎉', 'success')
@@ -446,16 +620,16 @@ def study(deck_id):
 def rate_card(deck_id):
     card_id = request.form.get('card_id')
     rating = request.form.get('status')
-    
+
     conn = get_db_connection()
     card = conn.execute('SELECT * FROM cards WHERE id = ?', (card_id,)).fetchone()
-    
+
     interval = card['interval'] if card['interval'] else 0
     ease = card['ease'] if card['ease'] else 2.5
-    
+
     rating_map = {'again': 0, 'hard': 1, 'good': 2, 'easy': 3}
     score = rating_map.get(rating, 2)
-    
+
     if score < 2:
         interval = 0
     else:
@@ -465,21 +639,30 @@ def rate_card(deck_id):
             interval = 6
         else:
             interval = int(interval * ease)
-        
+
         ease = ease + (0.1 - (3 - score) * (0.08 + (3 - score) * 0.02))
         if ease < 1.3:
             ease = 1.3
-    
+
     due_date = datetime.now() + timedelta(days=interval)
     due_date_str = due_date.strftime('%Y-%m-%d')
-    
+
     new_status = 'learning' if score < 2 else 'learning'
-    
+
     conn.execute('''
-        UPDATE cards 
+        UPDATE cards
         SET interval = ?, ease = ?, due_date = ?, status = ?
         WHERE id = ?
     ''', (interval, ease, due_date_str, new_status, card_id))
+
+    # Also update user_progress if this card is assigned to any of user's classes
+    if current_user.is_student():
+        conn.execute('''
+            UPDATE user_progress
+            SET interval = ?, ease = ?, due_date = ?, status = ?, last_reviewed = CURRENT_TIMESTAMP
+            WHERE user_id = ? AND card_id = ?
+        ''', (interval, ease, due_date_str, new_status, current_user.id, card_id))
+
     conn.commit()
     conn.close()
 
@@ -682,24 +865,299 @@ def join_class():
     
     return render_template('join_class.html')
 
-# Placeholder routes for features to be implemented
 @app.route('/classes/<int:class_id>/dashboard')
 @login_required
 def class_dashboard(class_id):
-    """Teacher dashboard for a class."""
-    return render_template('class_dashboard.html', class_id=class_id)
+    """Teacher dashboard for a class with student progress stats."""
+    if not current_user.is_teacher():
+        flash('Only teachers can access class dashboards.', 'error')
+        return redirect(url_for('index'))
 
-@app.route('/classes/<int:class_id>/assign')
-@login_required
-def assign_cards(class_id):
-    """Assign cards to a class."""
-    return render_template('assign_cards.html', class_id=class_id)
+    conn = get_db_connection()
+
+    # Verify teacher owns this class
+    class_info = conn.execute(
+        'SELECT * FROM classes WHERE id = ? AND teacher_id = ?',
+        (class_id, current_user.id)
+    ).fetchone()
+
+    if not class_info:
+        conn.close()
+        flash('Class not found or access denied.', 'error')
+        return redirect(url_for('list_classes'))
+
+    # Get filter parameters
+    unit_filter = request.args.get('unit', '')
+    student_filter = request.args.get('student', '')
+
+    # Get all units for filter dropdown
+    units = conn.execute('''
+        SELECT DISTINCT u.id, u.name FROM units u
+        JOIN cards c ON u.id = c.unit_id
+        JOIN class_cards cc ON c.id = cc.card_id
+        WHERE cc.class_id = ?
+        ORDER BY u.name ASC
+    ''', (class_id,)).fetchall()
+
+    # Get all students in class for filter dropdown
+    students = conn.execute('''
+        SELECT u.id, u.username FROM users u
+        JOIN enrollments e ON u.id = e.student_id
+        WHERE e.class_id = ?
+        ORDER BY u.username ASC
+    ''', (class_id,)).fetchall()
+
+    # Build student progress query
+    query = '''
+        SELECT
+            u.id as student_id,
+            u.username,
+            c.id as card_id,
+            c.front,
+            c.back,
+            un.id as unit_id,
+            un.name as unit_name,
+            up.status,
+            up.interval,
+            up.ease,
+            up.due_date,
+            up.last_reviewed
+        FROM users u
+        JOIN enrollments e ON u.id = e.student_id
+        JOIN class_cards cc ON e.class_id = cc.class_id
+        JOIN cards c ON cc.card_id = c.id
+        LEFT JOIN units un ON c.unit_id = un.id
+        LEFT JOIN user_progress up ON u.id = up.user_id AND c.id = up.card_id AND up.class_id = cc.class_id
+        WHERE e.class_id = ?
+    '''
+    params = [class_id]
+
+    if unit_filter:
+        query += ' AND un.id = ?'
+        params.append(unit_filter)
+
+    if student_filter:
+        query += ' AND u.id = ?'
+        params.append(student_filter)
+
+    query += ' ORDER BY u.username, un.name, c.id'
+
+    progress_data = conn.execute(query, params).fetchall()
+
+    # Calculate statistics
+    stats = {
+        'total_students': len(set(p['student_id'] for p in progress_data)),
+        'total_cards': len(set(p['card_id'] for p in progress_data)),
+        'cards_due': 0,
+        'completed_cards': 0,
+        'total_ease': 0,
+        'ease_count': 0
+    }
+
+    today = datetime.now().strftime('%Y-%m-%d')
+    student_stats = {}
+
+    for p in progress_data:
+        student_id = p['student_id']
+        if student_id not in student_stats:
+            student_stats[student_id] = {
+                'username': p['username'],
+                'cards_total': 0,
+                'cards_due': 0,
+                'cards_completed': 0,
+                'total_ease': 0,
+                'ease_count': 0
+            }
+
+        student_stats[student_id]['cards_total'] += 1
+
+        # Count due cards
+        if p['status'] == 'new' or (p['status'] == 'learning' and p['due_date'] and p['due_date'] <= today):
+            student_stats[student_id]['cards_due'] += 1
+            stats['cards_due'] += 1
+
+        # Count completed (reviewed at least once)
+        if p['last_reviewed']:
+            student_stats[student_id]['cards_completed'] += 1
+            stats['completed_cards'] += 1
+
+        # Track ease for average
+        if p['ease']:
+            student_stats[student_id]['total_ease'] += p['ease']
+            student_stats[student_id]['ease_count'] += 1
+            stats['total_ease'] += p['ease']
+            stats['ease_count'] += 1
+
+    # Calculate completion rate
+    if stats['total_cards'] > 0 and stats['total_students'] > 0:
+        stats['completion_rate'] = round((stats['completed_cards'] / (stats['total_cards'] * stats['total_students'])) * 100, 1)
+    else:
+        stats['completion_rate'] = 0
+
+    # Calculate average ease
+    if stats['ease_count'] > 0:
+        stats['avg_ease'] = round(stats['total_ease'] / stats['ease_count'], 2)
+    else:
+        stats['avg_ease'] = 2.5
+
+    # Calculate per-student completion rates
+    for student_id, sstats in student_stats.items():
+        if sstats['cards_total'] > 0:
+            sstats['completion_rate'] = round((sstats['cards_completed'] / sstats['cards_total']) * 100, 1)
+        else:
+            sstats['completion_rate'] = 0
+
+        if sstats['ease_count'] > 0:
+            sstats['avg_ease'] = round(sstats['total_ease'] / sstats['ease_count'], 2)
+        else:
+            sstats['avg_ease'] = 2.5
+
+    conn.close()
+
+    return render_template(
+        'class_dashboard.html',
+        class_info=class_info,
+        units=units,
+        students=students,
+        student_stats=student_stats,
+        stats=stats,
+        unit_filter=unit_filter,
+        student_filter=student_filter
+    )
+
 
 @app.route('/classes/<int:class_id>/study')
 @login_required
 def study_class(class_id):
     """Student study view for class cards."""
-    return render_template('study_class.html', class_id=class_id)
+    if not current_user.is_student():
+        flash('Only students can study class cards.', 'error')
+        return redirect(url_for('index'))
+
+    conn = get_db_connection()
+
+    # Verify student is enrolled in this class
+    enrollment = conn.execute(
+        'SELECT id FROM enrollments WHERE class_id = ? AND student_id = ?',
+        (class_id, current_user.id)
+    ).fetchone()
+
+    if not enrollment:
+        conn.close()
+        flash('You are not enrolled in this class.', 'error')
+        return redirect(url_for('list_classes'))
+
+    # Get class info
+    class_info = conn.execute('''
+        SELECT c.*, u.username as teacher_name
+        FROM classes c
+        JOIN users u ON c.teacher_id = u.id
+        WHERE c.id = ?
+    ''', (class_id,)).fetchone()
+
+    # Get cards assigned to this class that are due for the student
+    today = datetime.now().strftime('%Y-%m-%d')
+
+    # Get new cards first
+    new_cards = conn.execute('''
+        SELECT c.*, un.name as unit_name, up.status as progress_status
+        FROM cards c
+        JOIN class_cards cc ON c.id = cc.card_id
+        LEFT JOIN units un ON c.unit_id = un.id
+        LEFT JOIN user_progress up ON c.id = up.card_id AND up.user_id = ? AND up.class_id = ?
+        WHERE cc.class_id = ?
+        AND (up.status IS NULL OR up.status = 'new')
+        ORDER BY c.id ASC
+    ''', (current_user.id, class_id, class_id)).fetchall()
+
+    # Get due review cards
+    due_cards = conn.execute('''
+        SELECT c.*, un.name as unit_name, up.status as progress_status
+        FROM cards c
+        JOIN class_cards cc ON c.id = cc.card_id
+        LEFT JOIN units un ON c.unit_id = un.id
+        LEFT JOIN user_progress up ON c.id = up.card_id AND up.user_id = ? AND up.class_id = ?
+        WHERE cc.class_id = ?
+        AND up.status = 'learning'
+        AND (up.due_date <= ? OR up.due_date IS NULL OR up.due_date = '')
+        ORDER BY up.due_date ASC
+    ''', (current_user.id, class_id, class_id, today)).fetchall()
+
+    cards = list(new_cards) + list(due_cards)
+    conn.close()
+
+    if not cards:
+        flash('No cards due for review in this class! Great job! 🎉', 'success')
+        return redirect(url_for('list_classes'))
+
+    card = cards[0]
+    return render_template('study_class.html', card=card, class_id=class_id, class_info=class_info, cards_remaining=len(cards))
+
+
+@app.route('/classes/<int:class_id>/rate', methods=['POST'])
+@login_required
+def rate_class_card(class_id):
+    """Rate a card during class study session."""
+    if not current_user.is_student():
+        flash('Only students can rate class cards.', 'error')
+        return redirect(url_for('index'))
+
+    card_id = request.form.get('card_id')
+    rating = request.form.get('status')
+
+    conn = get_db_connection()
+
+    # Get current progress
+    progress = conn.execute('''
+        SELECT * FROM user_progress
+        WHERE user_id = ? AND card_id = ? AND class_id = ?
+    ''', (current_user.id, card_id, class_id)).fetchone()
+
+    if progress:
+        interval = progress['interval'] if progress['interval'] else 0
+        ease = progress['ease'] if progress['ease'] else 2.5
+    else:
+        interval = 0
+        ease = 2.5
+
+    rating_map = {'again': 0, 'hard': 1, 'good': 2, 'easy': 3}
+    score = rating_map.get(rating, 2)
+
+    if score < 2:
+        interval = 0
+    else:
+        if interval == 0:
+            interval = 1
+        elif interval == 1:
+            interval = 6
+        else:
+            interval = int(interval * ease)
+
+        ease = ease + (0.1 - (3 - score) * (0.08 + (3 - score) * 0.02))
+        if ease < 1.3:
+            ease = 1.3
+
+    due_date = datetime.now() + timedelta(days=interval)
+    due_date_str = due_date.strftime('%Y-%m-%d')
+
+    new_status = 'learning' if score < 2 else 'learning'
+
+    # Update or insert user progress
+    conn.execute('''
+        INSERT INTO user_progress (user_id, card_id, class_id, interval, ease, due_date, status, last_reviewed)
+        VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        ON CONFLICT(user_id, card_id, class_id) DO UPDATE SET
+            interval = excluded.interval,
+            ease = excluded.ease,
+            due_date = excluded.due_date,
+            status = excluded.status,
+            last_reviewed = CURRENT_TIMESTAMP
+    ''', (current_user.id, card_id, class_id, interval, ease, due_date_str, new_status))
+
+    conn.commit()
+    conn.close()
+
+    return redirect(url_for('study_class', class_id=class_id))
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
