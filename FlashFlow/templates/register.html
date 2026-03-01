@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}Register - FlashFlow{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <h2>Create Account</h2>
+    
+    <form method="POST" action="{{ url_for('register') }}" class="auth-form">
+        <div class="form-group">
+            <label for="username">Username</label>
+            <input type="text" id="username" name="username" required autofocus>
+        </div>
+        
+        <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" required>
+        </div>
+        
+        <div class="form-group">
+            <label>I am a:</label>
+            <div class="role-options">
+                <label class="role-option">
+                    <input type="radio" name="role" value="student" checked>
+                    <span>Student</span>
+                </label>
+                <label class="role-option">
+                    <input type="radio" name="role" value="teacher">
+                    <span>Teacher</span>
+                </label>
+            </div>
+        </div>
+        
+        <button type="submit" class="btn primary">Create Account</button>
+    </form>
+    
+    <p class="auth-switch">Already have an account? <a href="{{ url_for('login') }}">Log In</a></p>
+</div>
+{% endblock %}

@@ -1,0 +1,22 @@
+# Secrets/configs (never commit)
+config/
+*.key
+*.pem
+*.env
+node_modules/
+.env*
+*.log
+# Temp/backups
+*.tar.gz
+backups/
+# OS
+.DS_Store
+Thumbs.db
+# OpenClaw specifics
+.openclaw/
+.clawhub/
+.pi/
+# Skills (if installed locally, but use ClawHub)
+skills/node_modules/
+# Memory transients
+memory/*.tmp
