@@ -25,7 +25,7 @@
 {% if current_user.is_teacher() and teacher_classes and cards %}
 <section class="bulk-assign-section">
     <h3>Bulk Assign Cards to Class</h3>
-    <form action="{{ url_for('assign_cards_to_class', deck_id=deck['id']) }}" method="POST" class="bulk-assign-form">
+    <form action="{{ url_for('bulk_assign_from_deck', deck_id=deck['id']) }}" method="POST" class="bulk-assign-form">
         <div class="bulk-assign-controls">
             <select name="class_id" required>
                 <option value="" disabled selected>Select a class...</option>
@@ -43,7 +43,7 @@
 <section class="card-list">
     <h3>Cards in Deck ({{ cards|length }})</h3>
     {% if cards %}
-        <form id="bulk-assign-form" action="{{ url_for('assign_cards_to_class', deck_id=deck['id']) }}" method="POST">
+        <form id="bulk-assign-form" action="{{ url_for('bulk_assign_from_deck', deck_id=deck['id']) }}" method="POST">
             <ul class="cards">
                 {% for card in cards %}
                     <li>

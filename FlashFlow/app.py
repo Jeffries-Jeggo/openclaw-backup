@@ -409,7 +409,7 @@ def view_deck(deck_id):
 
 @app.route('/deck/<int:deck_id>/assign_cards', methods=['POST'])
 @login_required
-def assign_cards_to_class(deck_id):
+def bulk_assign_from_deck(deck_id):
     """Assign multiple cards to a class."""
     if not current_user.is_teacher():
         flash('Only teachers can assign cards.', 'error')
