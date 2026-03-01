@@ -28,3 +28,11 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Coverage
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Test databases
+test_flashcards.db

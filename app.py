@@ -63,11 +63,12 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT UNIQUE NOT NULL
         )''')
-        # Cards table (with unit_id)
+        # Cards table (with unit_id and created_by for tracking who made it)
         c.execute('''CREATE TABLE IF NOT EXISTS cards (
             id INTEGER PRIMARY KEY AUTOINCREMENT, 
             deck_id INTEGER, 
             unit_id INTEGER,
+            created_by INTEGER,
             front TEXT, 
             back TEXT, 
             status TEXT DEFAULT 'new',
@@ -75,13 +76,46 @@ def init_db():
             ease REAL DEFAULT 2.5,
             due_date TEXT DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(deck_id) REFERENCES decks(id),
-            FOREIGN KEY(unit_id) REFERENCES units(id)
+            FOREIGN KEY(unit_id) REFERENCES units(id),
+            FOREIGN KEY(created_by) REFERENCES users(id)
         )''')
-        # User progress table (for tracking individual student progress)
+        # Classes table
+        c.execute('''CREATE TABLE IF NOT EXISTS classes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            class_code TEXT UNIQUE NOT NULL,
+            teacher_id INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(teacher_id) REFERENCES users(id)
+        )''')
+        # Enrollments table (students in classes)
+        c.execute('''CREATE TABLE IF NOT EXISTS enrollments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            class_id INTEGER,
+            student_id INTEGER,
+            joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(class_id) REFERENCES classes(id),
+            FOREIGN KEY(student_id) REFERENCES users(id),
+            UNIQUE(class_id, student_id)
+        )''')
+        # Class cards table (cards assigned to classes)
+        c.execute('''CREATE TABLE IF NOT EXISTS class_cards (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            class_id INTEGER,
+            card_id INTEGER,
+            assigned_by INTEGER,
+            assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(class_id) REFERENCES classes(id),
+            FOREIGN KEY(card_id) REFERENCES cards(id),
+            FOREIGN KEY(assigned_by) REFERENCES users(id),
+            UNIQUE(class_id, card_id)
+        )''')
+        # User progress table (for tracking individual student progress on assigned cards)
         c.execute('''CREATE TABLE IF NOT EXISTS user_progress (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER,
             card_id INTEGER,
+            class_id INTEGER,
             status TEXT DEFAULT 'new',
             interval INTEGER DEFAULT 0,
             ease REAL DEFAULT 2.5,
@@ -89,7 +123,8 @@ def init_db():
             last_reviewed TIMESTAMP,
             FOREIGN KEY(user_id) REFERENCES users(id),
             FOREIGN KEY(card_id) REFERENCES cards(id),
-            UNIQUE(user_id, card_id)
+            FOREIGN KEY(class_id) REFERENCES classes(id),
+            UNIQUE(user_id, card_id, class_id)
         )''')
         conn.commit()
 
@@ -118,6 +153,52 @@ def migrate_db():
             c.execute('SELECT unit_id FROM cards LIMIT 1')
         except sqlite3.OperationalError:
             c.execute('ALTER TABLE cards ADD COLUMN unit_id INTEGER REFERENCES units(id)')
+        
+        # Add created_by column to cards if it doesn't exist
+        try:
+            c.execute('SELECT created_by FROM cards LIMIT 1')
+        except sqlite3.OperationalError:
+            c.execute('ALTER TABLE cards ADD COLUMN created_by INTEGER REFERENCES users(id)')
+        
+        # Create classes table
+        c.execute('''CREATE TABLE IF NOT EXISTS classes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            class_code TEXT UNIQUE NOT NULL,
+            teacher_id INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(teacher_id) REFERENCES users(id)
+        )''')
+        
+        # Create enrollments table
+        c.execute('''CREATE TABLE IF NOT EXISTS enrollments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            class_id INTEGER,
+            student_id INTEGER,
+            joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(class_id) REFERENCES classes(id),
+            FOREIGN KEY(student_id) REFERENCES users(id),
+            UNIQUE(class_id, student_id)
+        )''')
+        
+        # Create class_cards table
+        c.execute('''CREATE TABLE IF NOT EXISTS class_cards (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            class_id INTEGER,
+            card_id INTEGER,
+            assigned_by INTEGER,
+            assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(class_id) REFERENCES classes(id),
+            FOREIGN KEY(card_id) REFERENCES cards(id),
+            FOREIGN KEY(assigned_by) REFERENCES users(id),
+            UNIQUE(class_id, card_id)
+        )''')
+        
+        # Update user_progress table to add class_id if not exists
+        try:
+            c.execute('SELECT class_id FROM user_progress LIMIT 1')
+        except sqlite3.OperationalError:
+            c.execute('ALTER TABLE user_progress ADD COLUMN class_id INTEGER REFERENCES classes(id)')
         
         conn.commit()
 
