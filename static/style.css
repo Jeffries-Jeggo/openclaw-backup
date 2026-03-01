@@ -391,6 +391,85 @@ form input[type="text"] {
     margin-top: 8px;
 }
 
+/* Add Card Link */
+.add-card-link {
+    margin: 20px 0;
+}
+
+/* Unit Badge */
+.unit-badge {
+    display: inline-block;
+    background-color: #9b59b6;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-right: 8px;
+}
+
+/* Add Card Form */
+.add-card-container {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.add-card-form {
+    background: white;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+}
+
+.add-card-form .form-group {
+    margin-bottom: 20px;
+}
+
+.add-card-form label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--text-color);
+}
+
+.add-card-form textarea,
+.add-card-form input[type="text"],
+.add-card-form select {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 1rem;
+    font-family: 'Open Sans', sans-serif;
+    box-sizing: border-box;
+}
+
+.add-card-form textarea {
+    resize: vertical;
+}
+
+.add-card-form textarea:focus,
+.add-card-form input[type="text"]:focus,
+.add-card-form select:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.new-unit-field {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 5px;
+    border-left: 3px solid var(--primary);
+}
+
+.form-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 30px;
+}
+
 /* Auth Styles */
 .auth-container {
     max-width: 400px;

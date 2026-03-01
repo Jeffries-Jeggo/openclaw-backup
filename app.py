@@ -58,17 +58,24 @@ def init_db():
             created_by INTEGER,
             FOREIGN KEY(created_by) REFERENCES users(id)
         )''')
-        # Cards table
+        # Units table
+        c.execute('''CREATE TABLE IF NOT EXISTS units (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT UNIQUE NOT NULL
+        )''')
+        # Cards table (with unit_id)
         c.execute('''CREATE TABLE IF NOT EXISTS cards (
             id INTEGER PRIMARY KEY AUTOINCREMENT, 
             deck_id INTEGER, 
+            unit_id INTEGER,
             front TEXT, 
             back TEXT, 
             status TEXT DEFAULT 'new',
             interval INTEGER DEFAULT 0,
             ease REAL DEFAULT 2.5,
             due_date TEXT DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY(deck_id) REFERENCES decks(id)
+            FOREIGN KEY(deck_id) REFERENCES decks(id),
+            FOREIGN KEY(unit_id) REFERENCES units(id)
         )''')
         # User progress table (for tracking individual student progress)
         c.execute('''CREATE TABLE IF NOT EXISTS user_progress (
@@ -226,7 +233,12 @@ def create_deck():
 def view_deck(deck_id):
     conn = get_db_connection()
     deck = conn.execute('SELECT * FROM decks WHERE id = ?', (deck_id,)).fetchone()
-    cards = conn.execute('SELECT * FROM cards WHERE deck_id = ?', (deck_id,)).fetchall()
+    cards = conn.execute('''
+        SELECT cards.*, units.name as unit_name 
+        FROM cards 
+        LEFT JOIN units ON cards.unit_id = units.id 
+        WHERE cards.deck_id = ?
+    ''', (deck_id,)).fetchall()
     
     # Count due cards (including new cards and learning cards that are due)
     today = datetime.now().strftime('%Y-%m-%d')
@@ -243,20 +255,70 @@ def view_deck(deck_id):
     conn.close()
     return render_template('deck.html', deck=deck, cards=cards, due_count=due_count)
 
-@app.route('/add_card', methods=['POST'])
+def get_all_units():
+    """Get all units for dropdown."""
+    conn = get_db_connection()
+    units = conn.execute('SELECT * FROM units ORDER BY name ASC').fetchall()
+    conn.close()
+    return units
+
+@app.route('/deck/<int:deck_id>/add_card', methods=['GET', 'POST'])
 @login_required
-def add_card():
-    deck_id = request.form.get('deck_id')
-    front = request.form.get('front')
-    back = request.form.get('back')
-    if deck_id and front and back:
-        conn = get_db_connection()
-        conn.execute('INSERT INTO cards (deck_id, front, back) VALUES (?, ?, ?)', 
-                    (deck_id, front, back))
+def add_card(deck_id):
+    conn = get_db_connection()
+    deck = conn.execute('SELECT * FROM decks WHERE id = ?', (deck_id,)).fetchone()
+    
+    if not deck:
+        conn.close()
+        flash('Deck not found.', 'error')
+        return redirect(url_for('index'))
+    
+    if request.method == 'POST':
+        front = request.form.get('front', '').strip()
+        back = request.form.get('back', '').strip()
+        unit_id = request.form.get('unit_id')
+        new_unit_name = request.form.get('new_unit_name', '').strip()
+        
+        if not front or not back:
+            flash('Front and back are required.', 'error')
+            units = get_all_units()
+            conn.close()
+            return render_template('add_card.html', deck=deck, units=units)
+        
+        # Handle new unit creation
+        if unit_id == 'new' and new_unit_name:
+            try:
+                cursor = conn.execute('INSERT INTO units (name) VALUES (?)', (new_unit_name,))
+                unit_id = cursor.lastrowid
+                conn.commit()
+                flash(f'New unit "{new_unit_name}" created!', 'success')
+            except sqlite3.IntegrityError:
+                # Unit already exists, get its ID
+                existing = conn.execute('SELECT id FROM units WHERE name = ?', (new_unit_name,)).fetchone()
+                unit_id = existing['id']
+                flash(f'Using existing unit "{new_unit_name}".', 'info')
+        elif unit_id == 'new':
+            flash('Please enter a name for the new unit.', 'error')
+            units = get_all_units()
+            conn.close()
+            return render_template('add_card.html', deck=deck, units=units)
+        
+        # Insert the card
+        if unit_id and unit_id != 'new':
+            conn.execute('INSERT INTO cards (deck_id, unit_id, front, back) VALUES (?, ?, ?, ?)', 
+                        (deck_id, unit_id, front, back))
+        else:
+            conn.execute('INSERT INTO cards (deck_id, front, back) VALUES (?, ?, ?)', 
+                        (deck_id, front, back))
         conn.commit()
         conn.close()
-        flash('Card added!', 'success')
-    return redirect(url_for('view_deck', deck_id=deck_id))
+        flash('Card added successfully!', 'success')
+        return redirect(url_for('view_deck', deck_id=deck_id))
+    
+    # GET request - show form
+    units = conn.execute('SELECT * FROM units ORDER BY name ASC').fetchall()
+    conn.close()
+    return render_template('add_card.html', deck=deck, units=units)
 
 @app.route('/study/<int:deck_id>')
 @login_required

@@ -18,15 +18,9 @@
     <p class="hint">CSV format: front, back (header row optional)</p>
 </section>
 
-<section class="add-card">
-    <h3>Add New Card</h3>
-    <form action="{{ url_for('add_card') }}" method="POST">
-        <input type="hidden" name="deck_id" value="{{ deck['id'] }}">
-        <input type="text" name="front" placeholder="Front (Word)" required>
-        <input type="text" name="back" placeholder="Back (Translation)" required>
-        <button type="submit" class="btn primary">Add Card</button>
-    </form>
-</section>
+<div class="add-card-link">
+    <a href="{{ url_for('add_card', deck_id=deck['id']) }}" class="btn success">+ Add New Card</a>
+</div>
 
 <section class="card-list">
     <h3>Cards in Deck ({{ cards|length }})</h3>
@@ -37,6 +31,9 @@
                     <span class="front">{{ card['front'] }}</span>
                     <span class="separator">→</span>
                     <span class="back">{{ card['back'] }}</span>
+                    {% if card['unit_name'] %}
+                        <span class="unit-badge" title="Unit/Topic">{{ card['unit_name'] }}</span>
+                    {% endif %}
                     <span class="status-badge {{ card['status'] }}">{{ card['status'] }}</span>
                     {% if card['interval'] > 0 %}
                     <span class="interval-badge" title="Days until next review">{{ card['interval'] }}d</span>
