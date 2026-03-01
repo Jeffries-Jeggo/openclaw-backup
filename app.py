@@ -102,6 +102,28 @@ def get_db_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
+def migrate_db():
+    """Add missing tables/columns to existing database."""
+    with sqlite3.connect(DB_NAME) as conn:
+        c = conn.cursor()
+        
+        # Create units table if it doesn't exist
+        c.execute('''CREATE TABLE IF NOT EXISTS units (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT UNIQUE NOT NULL
+        )''')
+        
+        # Add unit_id column to cards if it doesn't exist
+        try:
+            c.execute('SELECT unit_id FROM cards LIMIT 1')
+        except sqlite3.OperationalError:
+            c.execute('ALTER TABLE cards ADD COLUMN unit_id INTEGER REFERENCES units(id)')
+        
+        conn.commit()
+
+# Run migrations on startup
+migrate_db()
+
 def get_due_cards(deck_id, user_id=None):
     """Get cards that are due for review based on spaced repetition.
     New cards (status='new') are prioritized and shown first."""
