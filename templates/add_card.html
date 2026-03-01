@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Add Card - {{ deck.name }}{% endblock %}
+
+{% block content %}
+<div class="add-card-container">
+    <h2>Add New Card to "{{ deck.name }}"</h2>
+    
+    <form method="POST" action="{{ url_for('add_card', deck_id=deck.id) }}" class="add-card-form">
+        <div class="form-group">
+            <label for="front">Front (Question)</label>
+            <textarea id="front" name="front" rows="3" required placeholder="Enter the question or prompt..."></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label for="back">Back (Answer)</label>
+            <textarea id="back" name="back" rows="3" required placeholder="Enter the answer..."></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label for="unit_id">Unit/Topic</label>
+            <select id="unit_id" name="unit_id" required>
+                <option value="" disabled selected>Select a unit...</option>
+                {% for unit in units %}
+                    <option value="{{ unit.id }}">{{ unit.name }}</option>
+                {% endfor %}
+                <option value="new">+ Add New Unit</option>
+            </select>
+        </div>
+        
+        <div class="form-group new-unit-field" style="display: none;">
+            <label for="new_unit_name">New Unit Name</label>
+            <input type="text" id="new_unit_name" name="new_unit_name" placeholder="Enter new unit name...">
+        </div>
+        
+        <div class="form-actions">
+            <a href="{{ url_for('view_deck', deck_id=deck.id) }}" class="btn secondary">Cancel</a>
+            <button type="submit" class="btn primary">Add Card</button>
+        </div>
+    </form>
+</div>
+
+<script>
+    document.getElementById('unit_id').addEventListener('change', function() {
+        const newUnitField = document.querySelector('.new-unit-field');
+        const newUnitInput = document.getElementById('new_unit_name');
+        
+        if (this.value === 'new') {
+            newUnitField.style.display = 'block';
+            newUnitInput.required = true;
+            newUnitInput.focus();
+        } else {
+            newUnitField.style.display = 'none';
+            newUnitInput.required = false;
+            newUnitInput.value = '';
+        }
+    });
+</script>
+{% endblock %}
