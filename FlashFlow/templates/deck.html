@@ -22,33 +22,27 @@
     <a href="{{ url_for('add_card', deck_id=deck['id']) }}" class="btn success">+ Add New Card</a>
 </div>
 
-{% if current_user.is_teacher() and teacher_classes and cards %}
-<section class="bulk-assign-section">
-    <h3>Bulk Assign Cards to Class</h3>
-    <form action="{{ url_for('bulk_assign_from_deck', deck_id=deck['id']) }}" method="POST" class="bulk-assign-form">
-        <div class="bulk-assign-controls">
-            <select name="class_id" required>
-                <option value="" disabled selected>Select a class...</option>
-                {% for class in teacher_classes %}
-                    <option value="{{ class.id }}">{{ class.name }}</option>
-                {% endfor %}
-            </select>
-            <button type="submit" class="btn primary">Assign Selected Cards</button>
-        </div>
-        <p class="hint">Select cards below and choose a class to assign them to all enrolled students.</p>
-    </form>
-</section>
-{% endif %}
-
 <section class="card-list">
     <h3>Cards in Deck ({{ cards|length }})</h3>
     {% if cards %}
         <form id="bulk-assign-form" action="{{ url_for('bulk_assign_from_deck', deck_id=deck['id']) }}" method="POST">
+            {% if current_user.is_teacher() and teacher_classes %}
+            <div class="bulk-assign-controls-top">
+                <select name="class_id" required>
+                    <option value="" disabled selected>Select a class...</option>
+                    {% for class in teacher_classes %}
+                        <option value="{{ class.id }}">{{ class.name }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="btn primary">Assign Selected Cards</button>
+            </div>
+            <p class="hint">Select cards below and choose a class to assign them to all enrolled students.</p>
+            {% endif %}
             <ul class="cards">
                 {% for card in cards %}
                     <li>
                         {% if current_user.is_teacher() and teacher_classes %}
-                        <input type="checkbox" name="card_ids" value="{{ card['id'] }}" class="card-checkbox" form="bulk-assign-form">
+                        <input type="checkbox" name="card_ids" value="{{ card['id'] }}" class="card-checkbox">
                         {% endif %}
                         <span class="front">{{ card['front'] }}</span>
                         <span class="separator">→</span>
@@ -70,32 +64,18 @@
 </section>
 
 <style>
-.bulk-assign-section {
-    margin: 20px 0;
-    padding: 20px;
+.bulk-assign-controls-top {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 15px;
+    padding: 15px;
     background: white;
     border-radius: 8px;
     box-shadow: var(--shadow);
 }
 
-.bulk-assign-section h3 {
-    margin-top: 0;
-    margin-bottom: 15px;
-}
-
-.bulk-assign-form {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.bulk-assign-controls {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-}
-
-.bulk-assign-controls select {
+.bulk-assign-controls-top select {
     padding: 10px;
     border: 1px solid #ddd;
     border-radius: 5px;
