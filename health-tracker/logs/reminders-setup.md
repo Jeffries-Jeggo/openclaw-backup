@@ -1,0 +1,1 @@
+# Reminder Setup\n\n- Morning: 5:00am Asia/Shanghai - Plan for day\n- Evening: 7:30pm - Day review + food eaten\n\nCron jobs added.
