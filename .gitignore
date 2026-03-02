@@ -1,60 +1,7 @@
-# Secrets/configs (never commit)
-config/
-*.key
-*.pem
-*.env
+FlashFlow/
+memory/*.md
+.ssh/
 node_modules/
-.env*
-
-# Temp/backups
-*.tar.gz
-backups/
-
-# OS
 .DS_Store
-Thumbs.db
-
-# OpenClaw specifics
-.openclaw/
-.clawhub/
-.pi/
-
-# Skills (if installed locally, but use ClawHub)
-skills/node_modules/
-
-# Memory transients
-memory/*.tmp
-
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-env/
-venv/
-ENV/
-.venv/
-
-# Flask
-instance/
-*.db
-*.sqlite3
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# Logs
+.env
 *.log
-
-# Coverage
-.coverage
-htmlcov/
-.pytest_cache/
-
-# Test databases
-test_flashcards.db
