@@ -35,6 +35,15 @@ _(Document major projects and current status)_
 - Created MEMORY.md to establish long-term memory foundation
 - Workspace is fresh - BOOTSTRAP.md still present (initial setup incomplete)
 
+### 2026-03-04
+- Daily Improvement: Reviewed MEMORY.md, USER.md, AGENTS.md, and recent daily memory files.
+- Observation: Workspace stable, only auto-backup activity.
+- Action: Updated MEMORY.md with system health note.
+Value: Maintains curated long-term memory of setup status.
+
+## Reminders 📅
+- **2026-03-11 6AM (Asia/Shanghai)**: Check out Qdrant for advanced memory (vector store post-Redis)
+
 ---
 
 ## Archived
@@ -46,9 +55,3 @@ _Old entries that are still worth keeping reference to_
 ---
 
 _Review and update this file regularly via heartbeat memory maintenance._
-
-### 2026-03-04
-- Daily Improvement: Reviewed MEMORY.md, USER.md, AGENTS.md, and recent daily memory files.
-- Observation: Workspace stable, only auto-backup activity.
-- Action: Updated MEMORY.md with system health note.
-Value: Maintains curated long-term memory of setup status.

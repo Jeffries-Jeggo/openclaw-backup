@@ -31,6 +31,12 @@
   - touch /tmp/redis-last-sync
 - fi
 
+# Qdrant Reminder (Wed March 11, 2026 6AM)
+- Run session_status → get current date/time
+- If date=2026-03-11 AND hour=5-7 (Asia/Shanghai): 
+  - message(action=send, channel=telegram, to=8738446334): "🍨 **Reminder**: Time to check out Qdrant for advanced memory (vector search after Redis)! Details in MEMORY.md. Ready?"
+  - Log to memory/2026-03-11.md: "Qdrant reminder sent"
+
 # Redis Monitoring (Every heartbeat, lightweight)
 - If systemctl is-active redis-server; then
   - Check memory: redis-cli info memory | grep -E "used_memory_human|maxmemory" | head -2
