@@ -45,6 +45,27 @@ Capture what matters. Decisions, context, things to remember. Skip the secrets u
 - When you make a mistake → document it so future-you doesn't repeat it
 - **Text > Brain** 📝
 
+### 🚀 Redis Cache - Session Memory Acceleration
+
+**After each conversation turn** (when you respond to a user message):
+
+1. **Cache session context** to Redis (for fast recall of recent conversation):
+   ```bash
+   python3 ~/.openclaw/workspace/tools/cache_conversation.py "telegram:8738446334" "USER_MESSAGE" "YOUR_RESPONSE"
+   ```
+   Replace placeholders with actual messages.
+
+2. **Auto-sync new memories**: Heartbeat tasks will sync new memory file entries to Redis every 6 hours.
+
+3. **Use cached memories**: When searching for past conversations or memories, check Redis first via:
+   ```bash
+   python3 ~/.openclaw/workspace/tools/redis_search.py "query"
+   ```
+
+**Session key format**: Use `telegram:8738446334` for direct chats with will. For other chats, use appropriate channel:user_id.
+
+**Why cache?**: Redis provides millisecond access to recent memories, reducing reliance on slower file searches and enabling smarter context-aware responses.
+
 ## Safety
 
 - Don't exfiltrate private data. Ever.

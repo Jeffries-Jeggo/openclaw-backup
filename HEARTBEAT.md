@@ -19,3 +19,20 @@
 - git add .
 - If changes (git status --porcelain), commit with msg "Auto-backup [date]" and git push origin main
 - Log success/failure to memory/YYYY-MM-DD.md
+
+# Redis Cache Maintenance (Every 6 hours)
+- If ! test -f /tmp/redis-last-sync || find /tmp/redis-last-sync -mmin +360 2>/dev/null | grep -q .; then
+  - Check Redis: systemctl is-active redis-server && redis-cli ping 2>&1 | grep -q PONG
+  - If active:
+    - cd ~/.openclaw/workspace && python3 tools/memory_cache.py sync 2>&1 | tail -5
+    - cd ~/.openclaw/workspace && python3 tools/memory_cache.py cleanup --days 30 2>&1 | tail -2
+    - cd ~/.openclaw/workspace && python3 tools/memory_cache.py stats 2>&1 | grep -E "(total_keys|used_memory_human)" | head -5
+    - Log to memory/YYYY-MM-DD.md: "Redis sync: [timestamp] keys=[total_keys] mem=[used_memory_human]"
+  - touch /tmp/redis-last-sync
+- fi
+
+# Redis Monitoring (Every heartbeat, lightweight)
+- If systemctl is-active redis-server; then
+  - Check memory: redis-cli info memory | grep -E "used_memory_human|maxmemory" | head -2
+  - If used_memory_human > 100MB: log warning to memory/YYYY-MM-DD.md
+- fi
