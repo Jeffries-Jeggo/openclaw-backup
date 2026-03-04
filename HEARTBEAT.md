@@ -11,8 +11,8 @@
 - Send message (channel=telegram, to=8738446334): "🍨 Morning improvement: [summary + value] Ready when you are!"
 
 # Test Heartbeat (one-time, next poll)
-- If ! test -f /tmp/heartbeat-platypus-test-done: message(action=send, channel=telegram, to=8738446334) "🍨 Heartbeat test: Platypus facts! 🦆 Duck-billed, lays eggs, venomous males, detects electric fields, 6 senses. One-time success!"
-- touch /tmp/heartbeat-platypus-test-done
+- If ! test -f /tmp/heartbeat-reindeer-test-done: message(action=send, channel=telegram, to=8738446334) "🍨 Heartbeat test: Reindeer facts! 🦌 Migrate 3k+km/year, females grow antlers (unique), domesticated for sleds, 800 subspecies, glow-in-dark nose myth (Rudolph)."
+- touch /tmp/heartbeat-reindeer-test-done
 
 # Auto-Backup Task (Every Heartbeat)
 - cd /home/ubuntu/.openclaw/workspace
