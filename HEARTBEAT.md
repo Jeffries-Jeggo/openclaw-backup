@@ -20,6 +20,10 @@
 - If changes (git status --porcelain), commit with msg "Auto-backup [date]" and git push origin main
 - Log success/failure to memory/YYYY-MM-DD.md
 
+# 24h Spend Tracker (Daily 6AM + Every Heartbeat if changed)
+- cd /home/ubuntu/.openclaw/workspace && ./scripts/24h-spend.sh
+
+
 # Redis Cache Maintenance (Every 6 hours)
 - If ! test -f /tmp/redis-last-sync || find /tmp/redis-last-sync -mmin +360 2>/dev/null | grep -q .; then
   - Check Redis: systemctl is-active redis-server && redis-cli ping 2>&1 | grep -q PONG
