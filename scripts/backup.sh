@@ -1,19 +1,8 @@
 #!/bin/bash
-# Auto-backup script for workspace
-
-cd /home/ubuntu/.openclaw/workspace
-DATE=$(date +%Y-%m-%d)
-TIME=$(date +%H:%M)
-
-echo "## Backup - $DATE $TIME" >> memory/$DATE.md
-
+cd /home/ubuntu/.openclaw/workspace || exit 1
 git add .
 if git status --porcelain | grep -q .; then
-  git commit -m "Auto-backup $DATE"
-  git push origin main
-  echo "Changes committed and pushed."
-else
-  echo "No changes."
+  git commit -m "Auto-backup $(date +%Y-%m-%d)"
+  git push origin main || echo "Push failed"
 fi
-
-echo "Backup complete."
+echo "Auto-backup complete."
