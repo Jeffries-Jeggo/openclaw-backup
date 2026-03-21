@@ -11,3 +11,5 @@ cody/.openclaw/
 lesson-planner/.openclaw/
 skills/*/.clawhub/
 tools/qdrant_venv/
+tools/__pycache__/
+qdrant_storage/
