@@ -1,0 +1,13 @@
+FlashFlow/
+memory/*.md
+.ssh/
+node_modules/
+.DS_Store
+.env
+*.log
+.clawhub/
+.openclaw/
+cody/.openclaw/
+lesson-planner/.openclaw/
+skills/*/.clawhub/
+tools/qdrant_venv/

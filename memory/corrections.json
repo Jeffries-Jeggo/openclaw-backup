@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "description": "Correction tracking - Logs explicit corrections",
+  "corrections": [
+    {
+      "id": "corr_20260227222239",
+      "content": "Stop updating the user on OpenRouter usage",
+      "context": "User explicitly asked to stop getting OpenRouter usage updates",
+      "timestamp": "2026-02-27T22:22:39.579298Z",
+      "count": 1
+    },
+    {
+      "id": "corr_20260228072223",
+      "content": "Don't show usage messages (token counts, costs, etc.)",
+      "context": "User explicitly said they don't want to see usage messages",
+      "timestamp": "2026-02-28T07:22:23.960137Z",
+      "count": 1
+    },
+    {
+      "id": "corr_20260228093606",
+      "content": "When answering questions about documents: (1) Base answers ONLY on provided documents, (2) If not found say 'not found in documents' - don't guess, (3) Cite: document name, page, section, quote, (4) Mark related but unconfident findings as 'unverified'",
+      "context": "User explicit preference for document Q&A",
+      "timestamp": "2026-02-28T09:36:06.524615Z",
+      "count": 1
+    }
+  ],
+  "updated_at": "2026-02-28T09:36:06.524622Z"
+}

@@ -1,0 +1,1 @@
+# Cron Jobs Added\n\nMorning Plan Check: 5:00 AM Asia/Shanghai\nEvening Review: 7:30 PM Asia/Shanghai\n\nDetails in cron list.
