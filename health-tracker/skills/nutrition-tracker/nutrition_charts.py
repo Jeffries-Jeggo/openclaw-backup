@@ -17,7 +17,7 @@ from datetime import datetime, timedelta
 
 LOG_DIR = "logs/food"
 OUT_DIR = "logs"
-GOALS = {'cal': 2400}
+GOALS = {'cal': 2200}
 
 def parse_daily_log(date_str):
     """Parse a food log markdown file and return totals."""

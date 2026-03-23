@@ -23,7 +23,7 @@ metadata:
 Track calories, protein, fat, and carbs from natural language meal descriptions.
 Logs to `logs/food/YYYY-MM-DD.md` and Google Sheets. Evening summary with charts.
 
-**Daily goal:** 2400 kcal
+**Daily goal:** 2200 kcal
 
 ---
 

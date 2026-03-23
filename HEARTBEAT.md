@@ -1,7 +1,7 @@
 # HEARTBEAT.md - Proactive Tasks
 
-# 24h Spend Tracker (Daily 6AM + Every Heartbeat if changed)
-- cd /home/ubuntu/.openclaw/workspace && ./scripts/24h-spend.sh
+# 24h Spend Tracker
+# REMOVED 2026-03-24 - redundant with session_status; no longer run as cron
 
 # Daily 6 AM Summary → Handled by cron (0 6 * * * openclaw heartbeat main)
 # See HEARTBEAT.md for the cron setup. Morning summary runs via openclaw heartbeat, not here.
