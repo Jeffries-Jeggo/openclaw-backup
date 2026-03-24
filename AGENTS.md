@@ -82,6 +82,20 @@ Before doing non-trivial work:
 - `trash` > `rm` (recoverable beats gone forever)
 - When in doubt, ask.
 
+## Skill Installation Security
+
+**Before installing ANY skill from the internet**, run the Cisco skill scanner:
+
+```bash
+~/.openclaw/skills/cisco-ai-defense-skill-scanner/venv/bin/skill-scanner scan <skill-path-or-url> --output-format pretty
+```
+
+If the scan finds HIGH or CRITICAL findings, do NOT install — report to Will first.
+If only LOW/MEDIUM, proceed with caution and report findings to Will.
+If clean, report "scan clean" before installing.
+
+This applies to: clawhub installs, git clones, direct URL paste-ins, any skill sourced externally.
+
 ## External vs Internal
 
 **Safe to do freely:**

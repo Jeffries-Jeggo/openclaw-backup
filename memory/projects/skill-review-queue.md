@@ -20,6 +20,11 @@ Started: 2026-03-24
 
 ## Security Protocol
 - ALL skills assume insecure until proven otherwise
+- **Cisco skill-scanner installed** at: `~/.openclaw/skills/cisco-ai-defense-skill-scanner/venv/bin/skill-scanner`
+  - Run before ANY skill install: `skill-scanner scan <path-or-url> --output-format pretty`
+  - HIGH/CRITICAL → do not install, report immediately
+  - MEDIUM/LOW → proceed with caution, report findings
+  - Clean → report "scan clean" before installing
 - Check VirusTotal reports on ClawHub skill pages
 - Never auto-install; always report first
 - Flag: exec calls, credential handling, prompt injection, network exfiltration
