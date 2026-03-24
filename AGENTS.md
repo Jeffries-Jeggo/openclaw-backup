@@ -96,6 +96,22 @@ If clean, report "scan clean" before installing.
 
 This applies to: clawhub installs, git clones, direct URL paste-ins, any skill sourced externally.
 
+## Gateway Config Changes
+
+**Before patching/restarting the gateway:**
+1. Validate JSON syntax: `python3 -m json.tool ~/.openclaw/openclaw.json > /dev/null`
+2. Validate config: `openclaw config validate 2>&1`
+3. If either fails, do NOT restart — fix the error first
+4. After restart, verify: `openclaw gateway status`
+
+**Config change workflow:**
+1. Read current config
+2. Make changes in memory / new dict
+3. Validate new JSON before writing
+4. Write to disk
+5. Validate with `openclaw config validate`
+6. Only then restart
+
 ## External vs Internal
 
 **Safe to do freely:**
