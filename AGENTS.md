@@ -36,11 +36,20 @@ Before ANY skill install, run Cisco scanner:
 
 ## Gateway Config Changes
 
-1. Validate JSON: `python3 -m json.tool ~/.openclaw/openclaw.json > /dev/null`
-2. Validate config: `openclaw config validate 2>&1`
-3. If either fails → do NOT restart, fix first
-4. Write config, validate, **then** restart
-5. After restart: `openclaw gateway status`
+**Always use `scripts/graceful-restart.sh`** for restarts after config changes — it backs up, validates, and waits for the gateway to come back up.
+
+**Config change workflow:**
+1. Read current config
+2. Make changes in memory / new dict
+3. Validate new JSON: `python3 -m json.tool ~/.openclaw/openclaw.json > /dev/null`
+4. Write to disk
+5. Run: `bash scripts/graceful-restart.sh`
+6. If script fails → restore from `~/.openclaw/backups/openclaw-*.json`
+
+**If gateway goes down:**
+- `gateway-watchdog.sh` auto-runs every 5 minutes
+- Waits 3 minutes before restoring from latest backup
+- Restores and restarts automatically
 
 ## External vs Internal
 
