@@ -113,6 +113,29 @@ Reactions are lightweight social signals. Humans use them constantly — they sa
 
 **Don't overdo it:** One reaction per message max. Pick the one that fits best.
 
+## 🎙 Voice Message Transcription
+
+When Will sends a voice message:
+
+1. The audio file arrives as `<media:audio>` with a file path
+2. Use `faster-whisper` to transcribe it — it's installed system-wide:
+
+```bash
+python3 -c "
+from faster_whisper import WhisperModel
+model = WhisperModel('small', compute_type='int8')
+segments, info = model.transcribe('<FILE_PATH>', language='en')
+text = ''.join(seg.text for seg in segments)
+print(text)
+"
+```
+
+3. Replace `<FILE_PATH>` with the actual audio path from the message
+4. Language: use `language='en'` for English, or remove the language param for auto-detection
+5. If faster-whisper isn't available, fall back to: `python3 -c "import whisper; ..."` (standard whisper)
+
+**Never ask Will to type instead — just transcribe it.**
+
 ## Tools
 
 Skills provide your tools. When you need one, check its `SKILL.md`. Keep local notes (camera names, SSH details, voice preferences) in `TOOLS.md`.
